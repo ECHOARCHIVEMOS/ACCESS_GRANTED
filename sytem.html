@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>//MOS//ARCHIVE//FRAGMENT</title>
+<style>
+  :root{--bg:#0b0b0b;--fg:#eaeaea;--muted:#9aa3a8;--acc:#7dd3fc}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,Segoe UI,Roboto,Arial;user-select:none}
+  .wrap{max-width:980px;margin:0 auto;padding:28px;display:grid;gap:18px}
+  h1{margin:0 0 6px;font-size:26px}
+  .muted{color:var(--muted)}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;position:relative;overflow:hidden}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .mirror{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:#0e0e0e;border:1px solid rgba(125,211,252,.10);cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);position:relative;overflow:hidden}
+  .mirror:active{transform:scale(.98)}
+  .crack{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s}
+  .slider{accent-color:var(--acc)}
+  .btn{background:#0f0f0f;border:1px solid rgba(255,255,255,.10);color:var(--fg);padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn:active{transform:scale(.98)}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+  canvas{display:block;width:100%;border-radius:10px;background:#070707}
+  .tiny{font-size:12px}
+  /* one-time glitch flash */
+  .glitchFlash{animation:gl .35s steps(2) 1}
+  @keyframes gl{
+    0%{filter:contrast(1) hue-rotate(0deg)}
+    50%{filter:contrast(2) hue-rotate(45deg)}
+    100%{filter:contrast(1) hue-rotate(0deg)}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>//Hello//Player//</h1>
+      <div class="muted tiny">Touch the mirror. Tune the strength. Obey the rhythm.</div>
+    </header>
+
+    <div class="grid">
+
+      <section class="card">
+        <div class="row">
+          <div class="mirror" id="mirror" title="Click the mirror">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="2" width="18" height="18" rx="3"></rect>
+              <path d="M8 21h8"></path>
+            </svg>
+            <!-- crack overlay -->
+            <svg class="crack" id="crack" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M50 10 L52 28 L40 42 L58 48 L50 62 L66 70 L54 84" stroke="#7dd3fc" stroke-opacity=".9" stroke-width="1.2" fill="none"/>
+              <path d="M52 28 L70 24" stroke="#7dd3fc" stroke-opacity=".6" stroke-width=".9" fill="none"/>
+              <path d="M40 42 L28 50" stroke="#7dd3fc" stroke-opacity=".6" stroke-width=".9" fill="none"/>
+              <path d="M58 48 L74 58" stroke="#7dd3fc" stroke-opacity=".6" stroke-width=".9" fill="none"/>
+            </svg>
+          </div>
+          <div>
+            <div style="font-weight:600">The Mirror</div>
+            <div class="muted tiny" id="mirrorHint">Tap once to wake it.</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <label for="strength" class="tiny muted" style="min-width:100px">Strength</label>
+          <input id="strength" type="range" class="slider" min="0" max="100" value="2" style="width:280px">
+          <div id="sv" class="tiny muted">2</div>
+        </div>
+
+
+        <div class="card" style="margin-top:12px">
+          <div class="tiny muted">Tuning</div>
+          <canvas id="tune" width="600" height="120"></canvas>
+          <div class="tiny muted" id="tuneMsg" style="margin-top:6px">Find the balance.</div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="reveal" disabled>Reveal</button>
+          <div id="status" class="tiny muted">Steps: Mirror ✗ / Balance ✗ / Rhythm ✗</div>
+        </div>
+      </section>
+
+
+      <aside class="card">
+        <div class="tiny muted">Recovered fragment</div>
+        <canvas id="out" width="600" height="180"></canvas>
+        <div class="tiny muted" style="margin-top:8px">Fragment//Awaiting//Signal</div>
+      </aside>
+    </div>
+
+
+    <section class="card">
+      <div class="tiny muted">Signal trace</div>
+      <canvas id="fx" width="960" height="80"></canvas>
+    </section>
+  </div>
+
+<script>
+
+const OBUF = [7,12,17,29,115,106,39,44,49,61,100,45,38,38,59,105,53,105,25,8,26,26,115,1,0,13,13,12,7,12,4,6,29,0,6,7,26];
+
+const $ = id => document.getElementById(id);
+const mirror = $('mirror'), crack = $('crack'), mirrorHint = $('mirrorHint');
+const strength = $('strength'), sv = $('sv');
+const tune = $('tune'), tctx = tune.getContext('2d');
+const tuneMsg = $('tuneMsg');
+const reveal = $('reveal'), statusEl = $('status');
+const out = $('out'), octx = out.getContext('2d');
+const fx = $('fx'), fctx = fx.getContext('2d');
+
+let mirrorAwake = false;
+let crackShown = false;
+
+
+const SWEET_MIN = 63, SWEET_MAX = 67;  // 
+const GLITCH_THRESH = 78;              // 
+let rhythmEnabled = false;
+let tapTimes = [];
+
+function ping(el){ el.animate([{transform:'scale(1)'},{transform:'scale(.97)'},{transform:'scale(1)'}],{duration:160}); }
+function setStatus(){
+  const a = mirrorAwake ? "✓" : "✗";
+  const val = Number(strength.value);
+  const inBand = (val>=SWEET_MIN && val<=SWEET_MAX);
+  const b = inBand ? "✓" : "✗";
+  const c = rhythmEnabled ? "… " : "✗";
+  statusEl.textContent = `Steps: Mirror ${a} / Balance ${b} / Rhythm ${rhythmEnabled ? "…waiting" : "✗"}`;
+  reveal.disabled = !(mirrorAwake && inBand && isRhythmSatisfied());
+}
+function banner(ctx, msg, w, h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#0b1014"; ctx.fillRect(0,0,w,h);
+  for(let i=0;i<6;i++){ ctx.fillStyle="rgba(125,211,252,0.08)"; ctx.fillRect(0, Math.random()*h|0, w, 4 + (Math.random()*3|0)); }
+  ctx.fillStyle="#dff7ff";
+  ctx.font="20px ui-monospace,monospace";
+  ctx.shadowColor="rgba(125,211,252,.35)";
+  ctx.shadowBlur=8;
+  ctx.fillText(msg, 18, h/2|0);
+  ctx.shadowBlur=0;
+}
+banner(octx, "Awaiting signal…", out.width, out.height);
+
+
+mirror.addEventListener('click', ()=>{
+  ping(mirror);
+  if(!mirrorAwake){
+    mirrorAwake = true;
+    mirrorHint.textContent = "It sees you.";
+    if(!crackShown){
+      crack.style.opacity = 1;
+      mirror.classList.add('glitchFlash');
+      crackShown = true;
+      setTimeout(()=> mirror.classList.remove('glitchFlash'), 360);
+    }
+  }
+
+
+  if(rhythmEnabled){
+    tapTimes.push(performance.now());
+    if(tapTimes.length>3) tapTimes.shift();
+
+    mirror.style.borderColor = "rgba(125,211,252,.5)";
+    setTimeout(()=> mirror.style.borderColor = "rgba(125,211,252,.10)", 80);
+
+    setStatus();
+  }
+});
+
+
+strength.addEventListener('input', ()=>{
+  sv.textContent = strength.value;
+  drawTuning();
+  setStatus();
+});
+
+
+function drawTuning(){
+  const w=tune.width, h=tune.height;
+  const v = Number(strength.value);
+  tctx.clearRect(0,0,w,h);
+
+
+  const rows = 80;
+  for(let i=0;i<rows;i++){
+    const y = (i * (h/rows))|0;
+    tctx.fillStyle = `rgba(255,255,255,${Math.random()*0.05})`;
+    tctx.fillRect(0,y,w,1);
+  }
+
+
+  const baseMsg = "FIND THE BALANCE";
+  const instructMsg = "Tap the mirror 3 times—in rhythm.";
+  const tooHighMsg = "OVERTUNED — SIGNAL BREAKING";
+
+
+  if(v < 20){
+
+    tctx.fillStyle = "rgba(210,240,255,0.03)";
+    tctx.font = "24px ui-monospace,monospace";
+    tctx.fillText(baseMsg, 20, h/2|0);
+    tuneMsg.textContent = "Find the balance.";
+    rhythmEnabled = false; tapTimes = [];
+  }
+  else if(v >= SWEET_MIN && v <= SWEET_MAX){
+
+    tctx.fillStyle = "rgba(210,240,255,0.95)";
+    tctx.font = "24px ui-monospace,monospace";
+    tctx.shadowColor="rgba(125,211,252,.35)"; tctx.shadowBlur=8;
+    tctx.fillText(instructMsg, 20, h/2|0);
+    tctx.shadowBlur=0;
+    tuneMsg.textContent = "Hold this strength. Then tap… tap… tap.";
+    rhythmEnabled = true; // unlock rhythm phase
+  }
+  else if(v > GLITCH_THRESH){
+
+    const msg = tooHighMsg;
+    const jitter = Math.min(12, Math.floor((v-GLITCH_THRESH)/2)+2);
+    tctx.font = "24px ui-monospace,monospace";
+
+    tctx.fillStyle = "rgba(80,200,255,0.45)"; tctx.fillText(msg, 20 + (Math.random()*jitter|0), (h/2|0) + (Math.random()*jitter|0));
+    tctx.fillStyle = "rgba(255,80,160,0.35)"; tctx.fillText(msg, 18 - (Math.random()*jitter|0), (h/2|0) - (Math.random()*jitter|0));
+    tctx.fillStyle = "rgba(210,240,255,0.75)"; tctx.fillText(scramble(msg), 20 + (Math.random()*jitter|0), (h/2|0) + (Math.random()*jitter|0));
+    tuneMsg.textContent = "Too strong. Ease back until it clears.";
+    rhythmEnabled = false; tapTimes = [];
+  }
+  else{
+
+    tctx.font = "24px ui-monospace,monospace";
+    tctx.fillStyle = "rgba(210,240,255," + (0.25 + (v/200)) + ")";
+    tctx.fillText(baseMsg, 20, h/2|0);
+    // small chromatic ghost
+    tctx.fillStyle = "rgba(125,211,252," + (0.15 + (v/300)) + ")";
+    tctx.fillText(baseMsg, 22, (h/2|0)+1);
+    tuneMsg.textContent = "Closer…";
+    rhythmEnabled = false; tapTimes = [];
+  }
+
+  setStatus();
+}
+function scramble(s){
+
+  const map = {'E':'Ξ','A':'Λ','O':'0','I':'丨','T':'┼','S':'5','N':'И','R':'Я'};
+  return s.split('').map(ch => (Math.random()<0.25 && map[ch]) ? map[ch] : ch).join('');
+}
+
+setInterval(()=>{
+  if(window.outerWidth-window.innerWidth>160 || window.outerHeight-window.innerHeight>160){
+     document.write("⚠ CORE COMPROMISED");
+  }
+},1000);
+  
+function isRhythmSatisfied(){
+  if(!rhythmEnabled || tapTimes.length<3) return false;
+  const a = tapTimes[1]-tapTimes[0];
+  const b = tapTimes[2]-tapTimes[1];
+  const avg = (a+b)/2;
+
+  const tempoOK = a>=250 && a<=900 && b>=250 && b<=900;
+  const varianceOK = Math.abs(a-b) <= avg*0.25;
+  return tempoOK && varianceOK;
+}
+
+
+reveal.addEventListener('click', ()=>{
+  if(!(mirrorAwake && (Number(strength.value)>=SWEET_MIN && Number(strength.value)<=SWEET_MAX) && isRhythmSatisfied())) return;
+  ping(reveal);
+  let msg="";
+  for(let i=0;i<OBUF.length;i++){ msg += String.fromCharCode(OBUF[i]^73); }
+  banner(octx, msg, out.width, out.height);
+  statusEl.textContent = "stegcloak.surge.sh";
+});
+
+  
+
+(function anim(){
+  const W=fx.width,H=fx.height;
+  fctx.clearRect(0,0,W,H);
+  fctx.fillStyle="#05070a"; fctx.fillRect(0,0,W,H);
+  fctx.strokeStyle="rgba(125,211,252,.6)";
+  fctx.beginPath();
+  let y=H/2;
+  for(let i=0;i<W;i++){
+    const n=Math.sin((i+performance.now()/18)/18)*8 + Math.sin((i+performance.now()/9)/33);
+    y = H/2 + n*(1+Number(strength.value)/100);
+    if(i===0) fctx.moveTo(i,y); else fctx.lineTo(i,y);
+  }
+  fctx.stroke();
+  requestAnimationFrame(anim);
+})();
+
+
+sv.textContent = strength.value;
+drawTuning();
+setStatus();
+</script>
+</body>
+</html>

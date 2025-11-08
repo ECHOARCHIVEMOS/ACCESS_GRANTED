@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>//MOS//CORE</title>
+<style>
+  :root{--bg:#0b0b0b;--fg:#eaeaea;--muted:#9aa3a8;--acc:#7dd3fc;--ring:#0f1216}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,Segoe UI,Roboto,Arial;user-select:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px;display:grid;gap:16px}
+  h1{margin:0 0 6px;font-size:26px;letter-spacing:.3px}
+  .muted{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:1fr 330px;gap:16px}
+  @media (max-width:1020px){.grid{grid-template-columns:1fr}}
+
+  .stage{position:relative;aspect-ratio:1/1;background:radial-gradient(1200px at 50% 80%,#06080a 30%,#0b0f14);border:1px solid rgba(255,255,255,.04);border-radius:16px;overflow:hidden}
+  .ring{position:absolute;inset:6%;border-radius:50%;border:2px dashed rgba(125,211,252,.22);box-shadow:inset 0 0 60px rgba(125,211,252,.06)}
+  .spin-handle{position:absolute;inset:6%;border-radius:50%}
+  .slot{position:absolute;width:84px;height:84px;border-radius:50%;border:1px dashed rgba(125,211,252,.22);display:grid;place-items:center;background:rgba(125,211,252,.03)}
+  .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:160px;height:160px;border-radius:50%;background:radial-gradient(120px at 48% 46%,#0b1014,#07090c);border:1px solid rgba(255,255,255,.08);display:grid;place-items:center;box-shadow:0 0 60px rgba(125,211,252,.06), inset 0 0 40px rgba(125,211,252,.06)}
+  .corePulse{animation:pulse .5s ease 1}
+  @keyframes pulse{0%{box-shadow:0 0 0 rgba(125,211,252,0)}50%{box-shadow:0 0 50px rgba(125,211,252,.45)}100%{box-shadow:0 0 0 rgba(125,211,252,0)}}
+  .stability{position:absolute;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px}
+  .stabDot{width:10px;height:10px;border-radius:50%;background:#12202a;border:1px solid rgba(125,211,252,.25)}
+  .stabDot.on{background:#7dd3fc;box-shadow:0 0 10px rgba(125,211,252,.6)}
+  .modules{display:flex;gap:8px;flex-wrap:wrap}
+  .module{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(255,255,255,.06);border-radius:12px;background:#0e0e0e;cursor:grab}
+  .module:active{cursor:grabbing;transform:scale(.98)}
+  .pill{width:14px;height:14px;border-radius:50%}
+  .a{background:#93c5fd}.f{background:#fca5a5}.s{background:#86efac}.h{background:#fcd34d}.m{background:#c4b5fd}
+  .panel{border:1px solid rgba(255,255,255,.06);border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));padding:14px}
+  .tiny{font-size:12px}
+  .btn{background:#0f0f0f;border:1px solid rgba(255,255,255,.10);color:var(--fg);padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  canvas{display:block;width:100%;border-radius:10px;background:#070707}
+  .status{font-size:13px;color:var(--muted)}
+  .ok{color:#7dd3fc}
+  .note{font-size:12px;color:#789}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>//CORE//VAULT//AUTOCLAVE</h1>
+    <div class="muted tiny">Stabilize the orbit · Spin the ring · Pulse the heart.</div>
+  </header>
+
+  <div class="grid">
+    <!-- STAGE -->
+    <section class="stage" id="stage">
+      <div class="stability" id="stab">
+        <div class="stabDot"></div><div class="stabDot"></div><div class="stabDot"></div><div class="stabDot"></div><div class="stabDot"></div>
+      </div>
+      <div class="ring"></div>
+      <div class="spin-handle" id="spin"></div>
+
+  
+      <div class="slot" data-slot="0" style="left:50%;top:6%;transform:translate(-50%,-50%)"></div>
+      <div class="slot" data-slot="1" style="left:88%;top:30%;transform:translate(-50%,-50%)"></div>
+      <div class="slot" data-slot="2" style="left:74%;top:78%;transform:translate(-50%,-50%)"></div>
+      <div class="slot" data-slot="3" style="left:26%;top:78%;transform:translate(-50%,-50%)"></div>
+      <div class="slot" data-slot="4" style="left:12%;top:30%;transform:translate(-50%,-50%)"></div>
+
+      <div class="core" id="core">
+        <svg width="80" height="80" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="24" fill="none" stroke="#7dd3fc" stroke-width="1.2" opacity=".6"/>
+          <circle cx="50" cy="50" r="8" fill="#0c141b" stroke="#7dd3fc" stroke-width="1"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- SIDE -->
+    <aside class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>Modules</strong>
+        <button class="btn" id="lock" disabled>Lock Orbit</button>
+      </div>
+      <div class="modules" id="mods">
+        <div class="module" draggable="true" data-mod="ARCHIVE"><span class="pill a"></span>ARCHIVE</div>
+        <div class="module" draggable="true" data-mod="FRAGMENT"><span class="pill f"></span>FRAGMENT</div>
+        <div class="module" draggable="true" data-mod="SYSTEM"><span class="pill s"></span>SYSTEM</div>
+        <div class="module" draggable="true" data-mod="HEARTBEAT"><span class="pill h"></span>HEARTBEAT</div>
+        <div class="module" draggable="true" data-mod="MIRROR"><span class="pill m"></span>MIRROR</div>
+      </div>
+
+      <hr style="border:none;height:8px">
+
+      <div><strong>Fusion Console</strong></div>
+      <div class="status" id="status">Phase 1 — <span>Stabilize orbit:</span> place any five into the ring, then <em>Lock Orbit</em>.</div>
+      <div class="note" id="hint" style="margin-top:6px">Feedback shows only how many are correct. It never tells you which.</div>
+
+      <div style="margin-top:12px"><strong>Recovered Fragment</strong></div>
+      <canvas id="out" width="600" height="180"></canvas>
+      <div class="note" style="margin-top:6px">The fragment will render here when the Core fuses.</div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const OBUF = [203,207,197,202,222,204,195,196]; 
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+const stage = $('#stage');
+const slots = $$('.slot');
+const core = $('#core');
+const stabDots = $$('#stab .stabDot');
+const statusEl = $('#status');
+const hintEl = $('#hint');
+const out = $('#out');
+const octx = out.getContext('2d');
+const spinHandle = $('#spin');
+const lockBtn = $('#lock');
+const modsTray = $('#mods');
+
+const REQUIRED = ['SYSTEM','MIRROR','ARCHIVE','HEARTBEAT','FRAGMENT'];
+let placed = Array(5).fill(null); 
+let filledCount = 0;
+
+
+let orbitStabilized = false;
+let spinOK = false;
+let rhythmOK = false;
+
+
+let spinning = false;
+let lastAngle = null;
+let totalCW = 0;
+let peakRPM = 0;
+let lastTime = 0;
+
+let taps = [];
+
+
+banner("Awaiting core alignment…");
+
+
+let dragData = null;
+$$('.module').forEach(mod=>{
+  mod.addEventListener('dragstart', e=>{
+    dragData = mod.getAttribute('data-mod');
+    e.dataTransfer.setData('text/plain', dragData);
+  });
+  mod.addEventListener('dragend', ()=>{ dragData = null; });
+});
+
+slots.forEach(slot=>{
+  slot.addEventListener('dragover', e=>{ e.preventDefault(); slot.style.background='rgba(125,211,252,.10)'; });
+  slot.addEventListener('dragleave', ()=>{ slot.style.background='rgba(125,211,252,.03)'; });
+  slot.addEventListener('drop', e=>{
+    e.preventDefault();
+    slot.style.background='rgba(125,211,252,.03)';
+    const mod = dragData || e.dataTransfer.getData('text/plain');
+    if(!mod) return;
+    const idx = Number(slot.getAttribute('data-slot'));
+    placed[idx] = mod;
+    // show only a colored dot (no labels) so mapping stays opaque
+    slot.innerHTML = `<div style="width:18px;height:18px;border-radius:50%;background:${colorFor(mod)};box-shadow:0 0 12px rgba(125,211,252,.25)"></div>`;
+    updateFilled();
+  });
+});
+
+function colorFor(mod){
+  switch(mod){
+    case 'ARCHIVE': return '#93c5fd';
+    case 'FRAGMENT': return '#fca5a5';
+    case 'SYSTEM': return '#86efac';
+    case 'HEARTBEAT': return '#fcd34d';
+    case 'MIRROR': return '#c4b5fd';
+    default: return '#7dd3fc';
+  }
+}
+
+function updateFilled(){
+  filledCount = placed.filter(Boolean).length;
+  lockBtn.disabled = filledCount < 5;
+  if(filledCount < 5){
+    statusEl.innerHTML = `Phase 1 — Place all five, then <em>Lock Orbit</em>.`;
+  }
+}
+
+
+lockBtn.addEventListener('click', ()=>{
+  const correct = totalCorrect();
+
+  stabDots.forEach((d,i)=> d.classList.toggle('on', i < correct));
+
+  if(correct === 5){
+    orbitStabilized = true;
+    statusEl.innerHTML = `Phase 1 — <span class="ok">Orbit stable.</span> Phase 2 — Spin the ring <em>clockwise</em> until it hums, not too fast. Its invisible so do it within the ring.`;
+    hintEl.textContent = "Click-drag the ring. Clockwise only. Watch the status.";
+  } else {
+    orbitStabilized = false;
+    statusEl.innerHTML = `Phase 1 — ${correct}/5 correct. The Core rejects the pattern.`;
+    hintEl.textContent = "Shuffle your hypothesis. The meter counts truth, not position.";
+    lightShuffleTray();
+  }
+  updateGate();
+});
+
+function totalCorrect(){
+  let n=0;
+  for(let i=0;i<5;i++){
+    if(placed[i] === REQUIRED[i]) n++;
+  }
+  return n;
+}
+
+function lightShuffleTray(){
+ 
+  const kids = Array.from(modsTray.children);
+  for(let i=kids.length-1;i>0;i--){
+    const j = (Math.random()* (i+1))|0;
+    modsTray.insertBefore(kids[j], kids[i]);
+  }
+}
+
+
+function getAngle(clientX, clientY){
+  const r = stage.getBoundingClientRect();
+  const cx = r.left + r.width/2;
+  const cy = r.top  + r.height/2;
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  let ang = Math.atan2(dy, dx) * 180/Math.PI; 
+  if(ang<0) ang += 360;
+  return ang; 
+}
+
+spinHandle.addEventListener('pointerdown', e=>{
+  if(!orbitStabilized) return;
+  spinning = true;
+  lastAngle = getAngle(e.clientX, e.clientY);
+  lastTime = performance.now();
+  spinHandle.setPointerCapture(e.pointerId);
+});
+spinHandle.addEventListener('pointermove', e=>{
+  if(!spinning) return;
+  const ang = getAngle(e.clientX, e.clientY);
+  const now = performance.now();
+  let delta = ang - lastAngle;
+  if(delta < -180) delta += 360;
+  if(delta >  180) delta -= 360;
+  if(delta>0){
+    totalCW += delta;
+    const dt = Math.max(1, now-lastTime);
+    const rpm = (delta/dt) * (1000/360) * 60;
+    peakRPM = Math.max(peakRPM, rpm);
+  }
+  lastAngle = ang; lastTime = now;
+
+
+  core.style.transform = `translate(-50%,-50%) rotate(${(totalCW/6)%360}deg)`;
+  if(totalCW >= 720 && peakRPM>=40){
+    if(!spinOK){
+      spinOK = true;
+      statusEl.innerHTML = `Phase 2 — <span class="ok">Spin threshold reached.</span> Phase 3 — Pulse the core <em>three times in rhythm</em>.`;
+      hintEl.textContent = "Rhythm: 400–800ms between taps, keep it even.";
+      core.classList.add('corePulse'); setTimeout(()=>core.classList.remove('corePulse'), 600);
+    }
+  } else {
+    spinOK = false;
+  }
+  updateGate();
+});
+spinHandle.addEventListener('pointerup', ()=>{ spinning=false; });
+
+
+core.addEventListener('click', ()=>{
+  if(!spinOK) return;
+  core.classList.add('corePulse'); setTimeout(()=>core.classList.remove('corePulse'), 200);
+  const t = performance.now();
+  taps.push(t);
+  if(taps.length>3) taps.shift();
+  if(isRhythmOK()){ rhythmOK = true; updateGate(); }
+});
+
+
+function isRhythmOK(){
+  if(taps.length<3) return false;
+  const a = taps[1]-taps[0];
+  const b = taps[2]-taps[1];
+  const avg = (a+b)/2;
+  const tempoOK = a>=400 && a<=800 && b>=400 && b<=800;
+  const varianceOK = Math.abs(a-b) <= avg*0.25;
+  return tempoOK && varianceOK;
+}
+
+
+function updateGate(){
+  if(orbitStabilized && spinOK && rhythmOK){
+    fuseCore();
+  }
+}
+
+
+function fuseCore(){
+  statusEl.innerHTML = `<span class="ok">Core fused.</span> Fragment recovered. XIDJQ`;
+  hintEl.textContent = "Proceed.";
+  let msg="";
+  for(let i=0;i<OBUF.length;i++){ msg += String.fromCharCode(OBUF[i]^137); }
+  banner(msg);
+}
+  
+  setInterval(()=>{
+  if(window.outerWidth-window.innerWidth>160 || window.outerHeight-window.innerHeight>160){
+     document.write("⚠ CORE COMPROMISED");
+  }
+},1000);
+
+function banner(text){
+  const w=out.width,h=out.height;
+  octx.clearRect(0,0,w,h);
+  octx.fillStyle="#0b1014"; octx.fillRect(0,0,w,h);
+  for(let y=0;y<h;y+=2){ octx.fillStyle="rgba(255,255,255,0.04)"; octx.fillRect(0,y,w,1); }
+  octx.fillStyle="#dff7ff";
+  octx.font="28px ui-monospace,monospace";
+  octx.shadowColor="rgba(125,211,252,.35)";
+  octx.shadowBlur=8;
+  // center text
+  const tw = octx.measureText(text).width;
+  octx.fillText(text, (w-tw)/2, h/2|0);
+  octx.shadowBlur=0;
+}
+</script>
+</body>
+</html>
